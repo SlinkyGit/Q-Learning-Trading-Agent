@@ -88,12 +88,12 @@ The Q-Learning agent learns an aggressive but profitable policy relative to the 
 
 ![Rule-Based vs Benchmark (In-Sample)](performance/rb_vs_bench_IS.png)
 ![RL Learner vs Benchmark (In-Sample)](performance/RL_vs_bench_IS.png)
-![Rule-Based vs RL Learner vs Benchmark (In-Sample)](performance/exp1_three_IS.png)
+![Rule-Based vs RL Learner vs Benchmark (In-Sample)](performance/three_IS.png)
 
 #### Out-of-Sample Performance (Unseen Data)
 Performance degrades out-of-sample, highlighting overfitting risk and regime sensitivity (a realistic and important outcome).
 
-![Manual vs Learner vs Benchmark (Out-of-Sample)](performance/exp1_three_OOS.png)
+![Manual vs Learner vs Benchmark (Out-of-Sample)](performance/three_OOS.png)
 
 ---
 
