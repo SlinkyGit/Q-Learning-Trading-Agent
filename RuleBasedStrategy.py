@@ -5,28 +5,20 @@ import math
 import matplotlib.pyplot as plt
 import indicators as indicator
 import util as ut
-import marketsimcode as msc
+import portfolio_simulator as ps
 
 
 class RuleBasedStrategy(object):
     """
-            Tests learner using data outside of the training data
+    A rule-based trading strategy that generates long, short, or neutral
+    positions for a single stock using technical indicators.
 
-            Parameters
-                symbol (str) – The stock symbol that you trained on on
-                sd (datetime) – A datetime object that represents the start date, defaults to 1/1/2009
-                ed (datetime) – A datetime object that represents the end date, defaults to 1/1/2010
-                sv (int) – The starting value of the portfolio
-            Returns
-                A single column data frame, indexed by date, representing trades for each day. Legal values are +1000.0 indicating
-                a BUY of 1000 shares, -1000.0 indicating a SELL of 1000 shares, and 0.0 indicating NOTHING.
-                Values of +2000 and -2000 for trades are also legal when switching from long to short or short to
-                long so long as net holdings are constrained to -1000, 0, and 1000.
-
-            Return type
-                pandas.DataFrame
+    The strategy combines Bollinger Bands, RSI, MACD, and On-Balance Volume
+    to identify overbought/oversold conditions and momentum shifts. It outputs
+    a daily trades DataFrame indicating how many shares should be bought or
+    sold to follow the strategy.
     """
-  
+    
     def __init__(self, verbose=False, impact=0.0, commission=0.0):
         """
         Constructor method
@@ -38,21 +30,15 @@ class RuleBasedStrategy(object):
 
     def generate_trades(self, symbol='IBM', sd=dt.datetime(2009, 1, 1, 0, 0), ed=dt.datetime(2010, 1, 1, 0, 0), sv=100000):
         """
-        Tests your learner using data outside of the training data
-
-        Parameters
-            symbol (str) – The stock symbol that you trained on on
-            sd (datetime) – A datetime object that represents the start date, defaults to 1/1/2009
-            ed (datetime) – A datetime object that represents the end date, defaults to 1/1/2010
-            sv (int) – The starting value of the portfolio
-        Returns
-            A single column data frame, indexed by date, representing trades for each day. Legal values are +1000.0 indicating
-            a BUY of 1000 shares, -1000.0 indicating a SELL of 1000 shares, and 0.0 indicating NOTHING.
-            Values of +2000 and -2000 for trades are also legal when switching from long to short or short to
-            long so long as net holdings are constrained to -1000, 0, and 1000.
-
-        Return type
-            pandas.DataFrame
+        Generate daily trading signals for a single stock using a rule-based strategy.
+    
+        The method computes Bollinger Bands, RSI, MACD, and OBV over the given
+        date range, and uses them to determine when the strategy should be long,
+        short, or neutral. The result is a DataFrame indicating the number of
+        shares to buy or sell each day (positive = buy, negative = sell).
+    
+        Returns a DataFrame with positive values for buys, negative for sells,
+        and zero when holding the current position.
         """
 
         dates = pd.date_range(sd, ed)
@@ -131,12 +117,12 @@ def in_sample():
     commission = 9.95
     impact = 0.005
 
-    ms = RuleBasedStrategy(verbose=False, impact=impact, commission=commission)
+    rb = RuleBasedStrategy(verbose=False, impact=impact, commission=commission)
 
     # Manual Strategy trades & portfolio values
-    df_trades = ms.generate_trades(symbol=symbol, sd=sd, ed=ed, sv=sv)
+    df_trades = rb.generate_trades(symbol=symbol, sd=sd, ed=ed, sv=sv)
 
-    portvals_ms = msc.compute_portvals(df_trades=df_trades, start_val=sv, commission=commission, impact=impact)
+    portvals_rb = ps.compute_portvals(df_trades=df_trades, start_val=sv, commission=commission, impact=impact)
 
     # benchmark trades & portfolio values
     # buy 1000 shares on first day -> hold to the end
@@ -147,36 +133,36 @@ def in_sample():
     first_day = benchmark_trades.index[0]
     benchmark_trades.loc[first_day, symbol] = 1000 # buy 1000 shares on first day
 
-    portvals_bench = msc.compute_portvals(df_trades=benchmark_trades, start_val=sv, commission=commission, impact=impact)
+    portvals_bench = ps.compute_portvals(df_trades=benchmark_trades, start_val=sv, commission=commission, impact=impact)
 
     # normalize for comparison
-    normalized_ms = portvals_ms / portvals_ms.iloc[0]
+    normalized_rb = portvals_rb / portvals_rb.iloc[0]
     normalized_bench = portvals_bench / portvals_bench.iloc[0]
 
     # compute stats (derived from marketsimcode)
-    daily_returns_ms = normalized_ms.pct_change().iloc[1:]
+    daily_returns_rb = normalized_rb.pct_change().iloc[1:]
     daily_returns_bench = normalized_bench.pct_change().iloc[1:]
 
-    cum_return_ms = normalized_ms.iloc[-1] - 1.0
+    cum_return_rb = normalized_rb.iloc[-1] - 1.0
     cum_return_bench = normalized_bench.iloc[-1] - 1.0
 
-    avg_daily_return_ms = daily_returns_ms.mean()
+    avg_daily_return_rb = daily_returns_rb.mean()
     avg_daily_return_bench = daily_returns_bench.mean()
 
-    std_daily_return_ms = daily_returns_ms.std()
+    std_daily_return_rb = daily_returns_rb.std()
     std_daily_return_bench = daily_returns_bench.std()
 
     print("Manual Strategy vs Benchmark (in-sample 2008–2009)")
-    print(f"Cumulative Return (Manual): {cum_return_ms}")
+    print(f"Cumulative Return (Manual): {cum_return_rb}")
     print(f"Cumulative Return (Benchmark): {cum_return_bench}")
-    print(f"Avg Daily Return (Manual): {avg_daily_return_ms}")
+    print(f"Avg Daily Return (Manual): {avg_daily_return_rb}")
     print(f"Avg Daily Return (Benchmark): {avg_daily_return_bench}")
-    print(f"Std Daily Return (Manual): {std_daily_return_ms}")
+    print(f"Std Daily Return (Manual): {std_daily_return_rb}")
     print(f"Std Daily Return (Benchmark): {std_daily_return_bench}")
 
     plot_manual_vs_benchmark(
-    dates=normalized_ms.index,
-    normalized_ms=normalized_ms,
+    dates=normalized_rb.index,
+    normalized_rb=normalized_rb,
     normalized_bench=normalized_bench,
     trades=df_trades,
     symbol=symbol,
@@ -184,7 +170,7 @@ def in_sample():
     filename="manual_in_sample.png",
     )
 
-    return portvals_ms["portvals"], portvals_bench["portvals"]
+    return portvals_rb["portvals"], portvals_bench["portvals"]
 
 
 def out_of_sample():
@@ -196,12 +182,12 @@ def out_of_sample():
     commission = 9.95
     impact = 0.005
 
-    ms = RuleBasedStrategy(verbose=False, impact=impact, commission=commission)
+    rb = RuleBasedStrategy(verbose=False, impact=impact, commission=commission)
 
     # Manual Strategy trades & portfolio values
-    df_trades = ms.generate_trades(symbol=symbol, sd=sd, ed=ed, sv=sv)
+    df_trades = rb.generate_trades(symbol=symbol, sd=sd, ed=ed, sv=sv)
 
-    portvals_ms = msc.compute_portvals(df_trades=df_trades, start_val=sv, commission=commission, impact=impact)
+    portvals_rb = ps.compute_portvals(df_trades=df_trades, start_val=sv, commission=commission, impact=impact)
 
     # benchmark trades & portfolio values
     # buy 1000 shares on first day, hold to the end
@@ -212,36 +198,36 @@ def out_of_sample():
     first_day = benchmark_trades.index[0]
     benchmark_trades.loc[first_day, symbol] = 1000 # buy 1000 shares on first day
 
-    portvals_bench = msc.compute_portvals(df_trades=benchmark_trades, start_val=sv, commission=commission, impact=impact)
+    portvals_bench = ps.compute_portvals(df_trades=benchmark_trades, start_val=sv, commission=commission, impact=impact)
 
     # normalize for comparison
-    normalized_ms = portvals_ms / portvals_ms.iloc[0]
+    normalized_rb = portvals_rb / portvals_rb.iloc[0]
     normalized_bench = portvals_bench / portvals_bench.iloc[0]
 
     # basic stats
-    daily_returns_ms = normalized_ms.pct_change().iloc[1:]
+    daily_returns_rb = normalized_rb.pct_change().iloc[1:]
     daily_returns_bench = normalized_bench.pct_change().iloc[1:]
 
-    cum_return_ms = normalized_ms.iloc[-1] - 1.0
+    cum_return_rb = normalized_rb.iloc[-1] - 1.0
     cum_return_bench = normalized_bench.iloc[-1] - 1.0
 
-    avg_daily_return_ms = daily_returns_ms.mean()
+    avg_daily_return_rb = daily_returns_rb.mean()
     avg_daily_return_bench = daily_returns_bench.mean()
 
-    std_daily_return_ms = daily_returns_ms.std()
+    std_daily_return_rb = daily_returns_rb.std()
     std_daily_return_bench = daily_returns_bench.std()
 
     print("Manual Strategy vs Benchmark (out-of-sample 2010–2011)")
-    print(f"Cumulative Return (Manual): {cum_return_ms}")
+    print(f"Cumulative Return (Manual): {cum_return_rb}")
     print(f"Cumulative Return (Benchmark): {cum_return_bench}")
-    print(f"Avg Daily Return (Manual): {avg_daily_return_ms}")
+    print(f"Avg Daily Return (Manual): {avg_daily_return_rb}")
     print(f"Avg Daily Return (Benchmark): {avg_daily_return_bench}")
-    print(f"Std Daily Return (Manual): {std_daily_return_ms}")
+    print(f"Std Daily Return (Manual): {std_daily_return_rb}")
     print(f"Std Daily Return (Benchmark): {std_daily_return_bench}")
 
     plot_manual_vs_benchmark(
-    dates=normalized_ms.index,
-    normalized_ms=normalized_ms,
+    dates=normalized_rb.index,
+    normalized_rb=normalized_rb,
     normalized_bench=normalized_bench,
     trades=df_trades,
     symbol=symbol,
@@ -249,12 +235,12 @@ def out_of_sample():
     filename="manual_out_sample.png",
     )
 
-    return portvals_ms["portvals"], portvals_bench["portvals"]
+    return portvals_rb["portvals"], portvals_bench["portvals"]
 
 
-def plot_manual_vs_benchmark(dates, normalized_ms, normalized_bench, trades, symbol, title, filename):
+def plot_manual_vs_benchmark(dates, normalized_rb, normalized_bench, trades, symbol, title, filename):
     # extract positions from trades
-    holdings = trades.cumsum()
+    holdings = trades.cursum()
     position = holdings[symbol]
 
     long_dates = []
@@ -277,7 +263,7 @@ def plot_manual_vs_benchmark(dates, normalized_ms, normalized_bench, trades, sym
 
     plt.figure(figsize=(10, 6))
     plt.plot(normalized_bench.index, normalized_bench.values, label='Benchmark', color='purple')
-    plt.plot(normalized_ms.index, normalized_ms.values, label='Manual Strategy', color='red')
+    plt.plot(normalized_rb.index, normalized_rb.values, label='Manual Strategy', color='red')
 
     # vertical lines for entry points
     # ref -> https://www.geeksforgeeks.org/python/plot-a-vertical-line-in-matplotlib/
@@ -297,31 +283,31 @@ def plot_manual_vs_benchmark(dates, normalized_ms, normalized_bench, trades, sym
 
 def performance_summary():
     # obtain data from in-sample/out-of-sample testing
-    ms_in, bench_in = in_sample()
-    ms_out, bench_out = out_of_sample()
+    rb_in, bench_in = in_sample()
+    rb_out, bench_out = out_of_sample()
     
-    ms_cr_in, ms_adr_in, ms_sddr_in, _ = msc.stats(ms_in)
-    bench_cr_in, bench_adr_in, bench_sddr_in, _ = msc.stats(bench_in)
+    rb_cr_in, rb_adr_in, rb_sddr_in, _ = ps.stats(rb_in)
+    bench_cr_in, bench_adr_in, bench_sddr_in, _ = ps.stats(bench_in)
 
-    ms_cr_out, ms_adr_out, ms_sddr_out, _ = msc.stats(ms_out)
-    bench_cr_out, bench_adr_out, bench_sddr_out, _ = msc.stats(bench_out)
+    rb_cr_out, rb_adr_out, rb_sddr_out, _ = ps.stats(rb_out)
+    bench_cr_out, bench_adr_out, bench_sddr_out, _ = ps.stats(bench_out)
 
     summary = pd.DataFrame({
         "Portfolio": [
-            "MS In-Sample", "Benchmark In-Sample",
-            "MS Out-of-Sample", "Benchmark Out-of-Sample"
+            "rb In-Sample", "Benchmark In-Sample",
+            "rb Out-of-Sample", "Benchmark Out-of-Sample"
         ],
         "Cumulative Return": [
-            ms_cr_in, bench_cr_in,
-            ms_cr_out, bench_cr_out
+            rb_cr_in, bench_cr_in,
+            rb_cr_out, bench_cr_out
         ],
         "Avg Daily Return": [
-            ms_adr_in, bench_adr_in,
-            ms_adr_out, bench_adr_out
+            rb_adr_in, bench_adr_in,
+            rb_adr_out, bench_adr_out
         ],
         "Std Daily Return": [
-            ms_sddr_in, bench_sddr_in,
-            ms_sddr_out, bench_sddr_out
+            rb_sddr_in, bench_sddr_in,
+            rb_sddr_out, bench_sddr_out
         ]
     })
 
